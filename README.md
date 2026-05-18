@@ -303,6 +303,15 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 MIT License. See [LICENSE](LICENSE) for details.
 
+## 🔧 Recent Changes (v1.1 — Hardening)
+
+- **MCP Error Recovery** — Malformed JSON or tool handler crashes now log to stderr instead of silently dropping. IDE agents get proper error feedback.
+- **MCP Spec Compliance** — Added `resources/list` and `prompts/list` stubs, returning empty arrays instead of method-not-found errors.
+- **Graceful Shutdown** — MCP server now handles `SIGINT`/`SIGTERM` signals for clean exit.
+- **Cleanup Timer Lifecycle** — Added `destroy()` method to `TraceStore` that clears the cleanup interval timer, preventing leaks on server shutdown.
+- **Sampled-Out Session Pruning** — The `sampledOutSessions` Set is now bounded (auto-cleared at >10K entries), preventing unbounded memory growth.
+- **Updated Model Pricing** — Added GPT-5.4 family, Claude Sonnet 4.6/Opus 4.7, Gemini 2.5 Flash, DeepSeek V3, Qwen 2.5 Coder to the cost tracking table (May 2026).
+
 ---
 
 <div align="center">

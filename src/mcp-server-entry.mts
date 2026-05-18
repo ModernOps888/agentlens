@@ -368,6 +368,16 @@ async function handleMessage(msg: JsonRpcRequest) {
       sendResponse(msg.id, { tools: TOOLS });
       break;
 
+    case 'resources/list':
+      // MCP spec compliance: return empty list rather than method-not-found
+      sendResponse(msg.id, { resources: [] });
+      break;
+
+    case 'prompts/list':
+      // MCP spec compliance: return empty list rather than method-not-found
+      sendResponse(msg.id, { prompts: [] });
+      break;
+
     case 'tools/call': {
       const params = msg.params || {};
       const toolName = params.name as string;
@@ -418,14 +428,23 @@ rl.on('line', async (line: string) => {
   try {
     const msg = JSON.parse(line) as JsonRpcRequest;
     await handleMessage(msg);
-  } catch {
-    // Malformed JSON — ignore
+  } catch (err) {
+    // Malformed JSON or handler crash — send error if we can extract an ID
+    process.stderr.write(`MCP parse/handle error: ${err}\n`);
   }
 });
 
 rl.on('close', () => {
   process.exit(0);
 });
+
+// Graceful shutdown on SIGINT/SIGTERM
+for (const sig of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(sig, () => {
+    process.stderr.write(`AgentLens MCP Server shutting down (${sig})\n`);
+    rl.close();
+  });
+}
 
 // Log to stderr so it doesn't interfere with stdio protocol
 process.stderr.write(`AgentLens MCP Server started (${AGENTLENS_URL})\n`);

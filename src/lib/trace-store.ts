@@ -139,6 +139,9 @@ class TraceStore {
     if (purgedCount > 0) {
       this.emit('storage:cleanup', { purged: purgedCount, remaining: this.sessions.size });
     }
+
+    // Prune stale sampled-out session IDs to prevent unbounded Set growth
+    this.pruneSampledOutSessions();
   }
 
   /** Determine if a session should be sampled (captured) */
@@ -497,6 +500,26 @@ class TraceStore {
 
   clear() {
     this.sessions.clear();
+  }
+
+  /** Clean up resources — call on server shutdown to prevent timer leaks. */
+  destroy() {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    this.listeners.clear();
+  }
+
+  /** Remove stale sampled-out session IDs to prevent unbounded memory growth.
+   *  Called automatically during cleanup cycles. */
+  private pruneSampledOutSessions() {
+    // Keep the set bounded: if it exceeds 10K entries, clear it entirely.
+    // This means a few previously-dropped sessions might get re-sampled,
+    // which is harmless — it only affects the first step of a resumed session.
+    if (this.sampledOutSessions.size > 10_000) {
+      this.sampledOutSessions.clear();
+    }
   }
 }
 
