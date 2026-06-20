@@ -37,3 +37,6 @@ next-env.d.ts
 # IDE
 .vscode/
 .idea/
+
+# AgentLens persisted trace data
+.data/

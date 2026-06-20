@@ -88,17 +88,17 @@ lens = AgentLens(session_name="My Agent Pipeline")
 # Option A: Wrap OpenAI (automatic tracing — zero code changes)
 from openai import OpenAI
 client = lens.wrap_openai(OpenAI(), agent_name="MyAgent")
-response = client.chat.completions.create(model="gpt-4o", messages=[...])
+response = client.chat.completions.create(model="gpt-5.4", messages=[...])  # Updated June 2026
 # ^ Every call is now traced in AgentLens!
 
 # Option B: Wrap Anthropic (Claude)
 from anthropic import Anthropic
 client = lens.wrap_anthropic(Anthropic(), agent_name="ClaudeAgent")
-response = client.messages.create(model="claude-4-sonnet", max_tokens=1024, messages=[...])
+response = client.messages.create(model="claude-sonnet-4-6", max_tokens=1024, messages=[...])  # Updated June 2026
 
 # Option C: Wrap Google Gemini
 import google.generativeai as genai
-model = lens.wrap_google(genai.GenerativeModel("gemini-2.5-flash"), agent_name="GeminiAgent")
+model = lens.wrap_google(genai.GenerativeModel("gemini-3.5-flash")  # Updated June 2026, agent_name="GeminiAgent")
 response = model.generate_content("Explain quantum computing")
 
 # Option D: Wrap Ollama (local LLMs — no package needed)
@@ -112,7 +112,7 @@ litellm.callbacks = [lens.wrap_litellm(agent_name="MultiModel")]
 # Option F: Manual tracing
 lens.trace_llm_call(
     agent_name="Researcher",
-    model="gpt-4o",
+    model="gpt-5.4",  # Updated June 2026
     prompt="Research this topic...",
     response="Here are the findings...",
     tokens={"prompt_tokens": 150, "completion_tokens": 200, "total_tokens": 350},
@@ -136,7 +136,7 @@ lens.end()  # Mark session complete
 # Send a trace step
 curl -X POST http://localhost:3000/api/ingest \
   -H "Content-Type: application/json" \
-  -d '{"session_id":"my-session","session_name":"Test","agent_name":"Agent1","step_type":"llm_call","model":"gpt-4o","prompt":"Hello","response":"Hi there"}'
+  -d '{"session_id":"my-session","session_name":"Test","agent_name":"Agent1","step_type":"llm_call","model":"gpt-5.4","prompt":"Hello","response":"Hi there"}'
 
 # End a session
 curl -X POST "http://localhost:3000/api/ingest?action=end" \
@@ -185,9 +185,9 @@ curl http://localhost:3000/api/ingest
 
 | Provider | Models | Auto-Wrap | Cost Tracking |
 |:---------|:-------|:----------|:-------------|
-| **OpenAI** | GPT-4o, GPT-4o-mini, o1, o3 | `wrap_openai()` | ✅ |
-| **Anthropic** | Claude 4 Opus/Sonnet, Claude 3.5 | `wrap_anthropic()` | ✅ |
-| **Google** | Gemini 2.0/2.5 Flash/Pro | `wrap_google()` | ✅ |
+| **OpenAI** | GPT-5.4, GPT-5.4-mini, o1, o3 | `wrap_openai()` | ✅ |
+| **Anthropic** | Claude Opus 4-8, Claude Sonnet 4-6 | `wrap_anthropic()` | ✅ |
+| **Google** | Gemini 3.5 Flash, Gemini 3.1 Pro | `wrap_google()` | ✅ |
 | **Ollama** | Llama 3, DeepSeek, Mistral, CodeLlama | `wrap_ollama()` | ✅ (free) |
 | **LiteLLM** | Any provider via LiteLLM proxy | `wrap_litellm()` | ✅ |
 | **Custom** | Any OpenAI-compatible API | Manual | ✅ (configurable) |

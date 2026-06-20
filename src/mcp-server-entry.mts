@@ -34,7 +34,8 @@ const AGENTLENS_URL = (process.env.AGENTLENS_URL || 'http://127.0.0.1:3000').rep
 
 // ─── MCP Protocol Constants ──────────────────────────────────────────────
 
-const PROTOCOL_VERSION = '2025-03-26';
+// Updated June 2026: MCP protocol version updated
+const PROTOCOL_VERSION = '2025-11-25';
 const SERVER_NAME = 'agentlens';
 const SERVER_VERSION = '0.1.0';
 

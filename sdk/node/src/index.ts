@@ -12,18 +12,18 @@
  *
  * // Automatic OpenAI wrapping
  * const client = lens.wrapOpenAI(new OpenAI());
- * const response = await client.chat.completions.create({ model: 'gpt-4o', messages: [...] });
+ * const response = await client.chat.completions.create({ model: 'gpt-5.4', messages: [...] });
  *
  * // Automatic Anthropic (Claude) wrapping
  * const claude = lens.wrapAnthropic(new Anthropic());
- * const msg = await claude.messages.create({ model: 'claude-4-sonnet', max_tokens: 1024, messages: [...] });
+ * const msg = await claude.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1024, messages: [...] });
  *
  * // Automatic Google Gemini wrapping
- * const model = lens.wrapGoogle(genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }));
+ * const model = lens.wrapGoogle(genAI.getGenerativeModel({ model: 'gemini-3.5-flash' }));
  * const result = await model.generateContent('Explain quantum computing');
  *
  * // Manual tracing
- * await lens.traceLLMCall({ agentName: 'Agent', model: 'gpt-4o', prompt: '...', response: '...' });
+ * await lens.traceLLMCall({ agentName: 'Agent', model: 'gpt-5.4', prompt: '...', response: '...' });
  *
  * await lens.end();
  * ```
@@ -284,7 +284,7 @@ export class AgentLens {
    * import Anthropic from '@anthropic-ai/sdk';
    * const claude = lens.wrapAnthropic(new Anthropic(), 'ClaudeAgent');
    * const msg = await claude.messages.create({
-   *   model: 'claude-4-sonnet-20260514',
+   *   model: 'claude-sonnet-4-6',  // Updated June 2026: model deprecated
    *   max_tokens: 1024,
    *   messages: [{ role: 'user', content: 'Hello Claude' }],
    * });
@@ -402,7 +402,7 @@ export class AgentLens {
    * import { GoogleGenerativeAI } from '@google/generative-ai';
    * const genAI = new GoogleGenerativeAI('API_KEY');
    * const model = lens.wrapGoogle(
-   *   genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }),
+   *   genAI.getGenerativeModel({ model: 'gemini-3.5-flash' }),
    *   'GeminiAgent'
    * );
    * const result = await model.generateContent('Explain quantum computing');

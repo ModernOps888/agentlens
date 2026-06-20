@@ -1,8 +1,11 @@
 // ─── Storage Configuration ──────────────────────────────────────────────────
 // Production-grade controls for sampling, TTL, and storage limits.
+// Includes JSON file-based persistence so traces survive server restarts.
 
 import type { TraceSession, TraceStep, CostBreakdown } from './types';
 import { calculateCost } from './types';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /** Raw ingest payload from the SDK — loosely typed to accept any field */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -14,6 +17,10 @@ const AGENT_COLORS = [
   '#ec4899', '#3b82f6', '#14b8a6', '#f97316', '#6366f1',
   '#84cc16', '#a855f7', '#22d3ee', '#fb923c', '#4ade80',
 ];
+
+// ─── Persistence Paths ──────────────────────────────────────────────────────
+const DATA_DIR = path.resolve(process.cwd(), '.data');
+const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 
 export interface StorageConfig {
   /** Sampling rate: 0.0–1.0. 1.0 = capture everything, 0.1 = capture 10%.
@@ -43,6 +50,10 @@ export interface StorageConfig {
 
   /** Auto-cleanup interval in milliseconds. Default: 60000 (1 min). */
   cleanupIntervalMs: number;
+
+  /** Debounce interval for disk writes in milliseconds.
+   *  Prevents excessive I/O during burst ingestion. Default: 500ms. */
+  persistDebounceMs: number;
 }
 
 const DEFAULT_CONFIG: StorageConfig = {
@@ -53,6 +64,7 @@ const DEFAULT_CONFIG: StorageConfig = {
   storePayloads: true,
   maxPayloadChars: 2000,
   cleanupIntervalMs: 60000,
+  persistDebounceMs: 500,
 };
 
 class TraceStore {
@@ -63,6 +75,8 @@ class TraceStore {
   private config: StorageConfig;
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private sampledOutSessions: Set<string> = new Set();
+  private persistTimer: ReturnType<typeof setTimeout> | null = null;
+  private persistDirty = false;
 
   /** Stats for monitoring storage health */
   public stats = {
@@ -74,7 +88,85 @@ class TraceStore {
 
   constructor(config?: Partial<StorageConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.hydrateFromDisk();
     this.startCleanupLoop();
+  }
+
+  // ─── Disk Persistence ───────────────────────────────────────────────────
+
+  /** Hydrate sessions from disk on startup */
+  private hydrateFromDisk() {
+    try {
+      if (!fs.existsSync(SESSIONS_FILE)) return;
+
+      const raw = fs.readFileSync(SESSIONS_FILE, 'utf-8');
+      const data = JSON.parse(raw) as {
+        sessions: Array<[string, TraceSession]>;
+        agentColors: Array<[string, string]>;
+        colorIndex: number;
+      };
+
+      if (data.sessions && Array.isArray(data.sessions)) {
+        this.sessions = new Map(data.sessions);
+      }
+      if (data.agentColors && Array.isArray(data.agentColors)) {
+        this.agentColorMap = new Map(data.agentColors);
+      }
+      if (typeof data.colorIndex === 'number') {
+        this.colorIndex = data.colorIndex;
+      }
+
+      console.log(`[AgentLens] Hydrated ${this.sessions.size} sessions from disk`);
+    } catch (err) {
+      console.warn('[AgentLens] Failed to hydrate from disk, starting fresh:', err);
+    }
+  }
+
+  /** Schedule a debounced write to disk */
+  private schedulePersist() {
+    this.persistDirty = true;
+    if (this.persistTimer) return; // already scheduled
+
+    this.persistTimer = setTimeout(() => {
+      this.persistTimer = null;
+      if (this.persistDirty) {
+        this.persistToDisk();
+        this.persistDirty = false;
+      }
+    }, this.config.persistDebounceMs);
+  }
+
+  /** Synchronously write current state to disk */
+  private persistToDisk() {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+
+      const data = {
+        sessions: Array.from(this.sessions.entries()),
+        agentColors: Array.from(this.agentColorMap.entries()),
+        colorIndex: this.colorIndex,
+        savedAt: new Date().toISOString(),
+      };
+
+      // Atomic write: write to temp file then rename
+      const tmpFile = SESSIONS_FILE + '.tmp';
+      fs.writeFileSync(tmpFile, JSON.stringify(data), 'utf-8');
+      fs.renameSync(tmpFile, SESSIONS_FILE);
+    } catch (err) {
+      console.error('[AgentLens] Failed to persist to disk:', err);
+    }
+  }
+
+  /** Force an immediate flush to disk (useful before shutdown) */
+  flushToDisk() {
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
+    }
+    this.persistToDisk();
+    this.persistDirty = false;
   }
 
   /** Update configuration at runtime */
@@ -138,6 +230,7 @@ class TraceStore {
 
     if (purgedCount > 0) {
       this.emit('storage:cleanup', { purged: purgedCount, remaining: this.sessions.size });
+      this.schedulePersist();
     }
 
     // Prune stale sampled-out session IDs to prevent unbounded Set growth
@@ -357,6 +450,9 @@ class TraceStore {
       status: session.status,
     });
 
+    // Persist to disk
+    this.schedulePersist();
+
     return step;
   }
 
@@ -471,6 +567,8 @@ class TraceStore {
       session.status = status || 'completed';
       session.ended_at = new Date().toISOString();
       this.emit('session:end', { id: sessionId, status: session.status });
+      // Flush immediately on session end (important checkpoint)
+      this.flushToDisk();
     }
   }
 
@@ -500,6 +598,7 @@ class TraceStore {
 
   clear() {
     this.sessions.clear();
+    this.flushToDisk();
   }
 
   /** Clean up resources — call on server shutdown to prevent timer leaks. */

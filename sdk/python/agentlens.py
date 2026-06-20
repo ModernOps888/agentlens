@@ -19,7 +19,7 @@ Usage:
     response = client.messages.create(...)  # Automatically traced!
 
     # Option 3: Wrap your Google Gemini client (automatic capture)
-    model = lens.wrap_google(genai.GenerativeModel("gemini-2.0-flash"))
+    model = lens.wrap_google(genai.GenerativeModel("gemini-3.5-flash"))  # Updated June 2026
     response = model.generate_content(...)  # Automatically traced!
 
     # Option 4: Wrap Ollama (automatic capture)
@@ -29,7 +29,7 @@ Usage:
     # Option 5: Manual tracing (any provider)
     lens.trace_llm_call(
         agent_name="Researcher",
-        model="gpt-4o",
+        model="gpt-5.4",  # Updated June 2026: gpt-4o deprecated
         prompt="Research this topic...",
         response="Here are the findings...",
         tokens={"prompt_tokens": 150, "completion_tokens": 200, "total_tokens": 350},
@@ -328,7 +328,7 @@ class AgentLens:
         Usage:
             from openai import OpenAI
             client = lens.wrap_openai(OpenAI(), agent_name="MyAgent")
-            response = client.chat.completions.create(model="gpt-4o", messages=[...])
+            response = client.chat.completions.create(model="gpt-5.4",  # Updated June 2026: gpt-4o deprecated messages=[...])
             # ^ This call is automatically traced in AgentLens!
         """
         lens = self
@@ -394,7 +394,7 @@ class AgentLens:
             from anthropic import Anthropic
             client = lens.wrap_anthropic(Anthropic(), agent_name="ClaudeAgent")
             response = client.messages.create(
-                model="claude-4-sonnet-20260514",
+                model="claude-sonnet-4-6",  # Updated June 2026: model deprecated
                 max_tokens=1024,
                 messages=[{"role": "user", "content": "Hello Claude"}]
             )
@@ -539,7 +539,7 @@ class AgentLens:
         Usage:
             import google.generativeai as genai
             genai.configure(api_key="...")
-            model = genai.GenerativeModel("gemini-2.5-flash")
+            model = genai.GenerativeModel("gemini-3.5-flash")  # Updated June 2026
             model = lens.wrap_google(model, agent_name="GeminiAgent")
             response = model.generate_content("Explain quantum computing")
             # ^ Automatically traced!
@@ -678,8 +678,8 @@ class AgentLens:
             litellm.callbacks = [callback]
 
             # Now every litellm.completion() call is traced regardless of provider
-            response = litellm.completion(model="gpt-4o", messages=[...])
-            response = litellm.completion(model="claude-4-sonnet", messages=[...])
+            response = litellm.completion(model="gpt-5.4",  # Updated June 2026: gpt-4o deprecated messages=[...])
+            response = litellm.completion(model="claude-sonnet-4-6",  # Updated June 2026 messages=[...])
             response = litellm.completion(model="ollama/llama3", messages=[...])
         """
         return LiteLLMCallback(self, agent_name)

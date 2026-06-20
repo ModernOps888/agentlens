@@ -15,7 +15,7 @@ lens = AgentLens(session_name="Research & Write Pipeline")
 # from openai import OpenAI
 # client = lens.wrap_openai(OpenAI(), agent_name="Researcher")
 # response = client.chat.completions.create(
-#     model="gpt-4o-mini",
+#     model="gpt-5.4-mini",  # Updated June 2026: gpt-4o-mini deprecated
 #     messages=[{"role": "user", "content": "Research AI agent trends in 2026"}],
 # )
 # print(response.choices[0].message.content)
@@ -52,7 +52,7 @@ lens.trace_mcp_call(
 # Step 4: Researcher makes an LLM call to synthesize findings
 lens.trace_llm_call(
     agent_name="Researcher",
-    model="gpt-4o-mini",
+    model="gpt-5.4-mini",  # Updated June 2026: gpt-4o-mini deprecated
     provider="openai",
     prompt="Synthesize the following research results into a structured brief about AI agent debugging tools...",
     system_prompt="You are a research analyst specializing in AI/ML developer tools.",
@@ -79,7 +79,7 @@ lens.trace_agent_spawn(
 # Step 7: Writer generates the draft
 lens.trace_llm_call(
     agent_name="Writer",
-    model="gpt-4o",
+    model="gpt-5.4",  # Updated June 2026: gpt-4o deprecated
     provider="openai",
     prompt="Write a LinkedIn post about the rise of AI agent debugging tools. Use the research brief as context.",
     response="🔍 The #1 problem nobody talks about in AI agents: debugging.\n\nWhen your 5-agent pipeline silently fails...",

@@ -14,7 +14,7 @@ Usage:
 
     agent = Agent(
         name="research_agent",
-        model="gemini-2.5-flash",
+        model="gemini-3.5-flash",  # Updated June 2026: gemini-2.5-flash deprecated
         instruction="You are a research assistant.",
         tools=[search_tool],
     )

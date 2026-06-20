@@ -32,7 +32,7 @@ const demoSteps: TraceStep[] = [
     agent_name: 'Orchestrator',
     step_type: 'llm_call',
     provider: 'anthropic',
-    model: 'claude-4-sonnet',
+    model: 'claude-sonnet-4-6',  // Updated June 2026: claude-4-sonnet deprecated
     system_prompt: 'You are a workflow orchestrator. Plan and coordinate multi-agent tasks.',
     prompt: 'Write a comprehensive blog post about "Why MCP is the USB-C of AI" for LinkedIn. Research current trends, write the post, edit it, and publish.',
     response: 'I will orchestrate this task in 4 phases:\n1. RESEARCH: Deploy Researcher agent to gather current MCP trends, adoption data, and key players\n2. WRITE: Deploy Writer agent with research context to draft the blog post\n3. EDIT: Deploy Editor agent to refine tone, check facts, and optimize for LinkedIn\n4. PUBLISH: Deploy Publisher agent to format and schedule\n\nSpawning Researcher agent now...',
@@ -107,7 +107,7 @@ const demoSteps: TraceStep[] = [
     agent_name: 'Researcher',
     step_type: 'llm_call',
     provider: 'anthropic',
-    model: 'claude-4-sonnet',
+    model: 'claude-sonnet-4-6',  // Updated June 2026: claude-4-sonnet deprecated
     prompt: 'Synthesize these research findings into a structured brief for a blog post writer. Focus on: key statistics, analogies to USB-C, enterprise adoption drivers, and community growth.',
     response: '## Research Brief: MCP as "USB-C of AI"\n\n### Key Statistics\n- 50,000+ GitHub stars (400% growth YoY)\n- 87% enterprise adoption (Gartner 2026)\n- 94% report reduced integration time\n- 3.2x faster agent deployment\n- 67% reduction in connector maintenance\n\n### The USB-C Analogy\n- Before MCP: N×M problem (every model needs custom connector to every tool)\n- After MCP: N+M solution (one standard protocol, universal compatibility)\n- Like USB-C replaced a drawer full of cables, MCP replaces a codebase full of bespoke integrations\n\n### Enterprise Drivers\n1. Linux Foundation backing (trust signal)\n2. Major vendor support (Anthropic, Google, Microsoft, AWS)\n3. Security: centralized audit trails vs scattered API keys\n4. Cost: one integration serves all current and future models\n\n### Community Growth\n- 2,400+ community MCP servers on MCPMarket\n- FastMCP framework: Python server in 20 lines of code\n- Official servers for: GitHub, Postgres, Slack, Google Workspace, Notion',
     tokens: { prompt_tokens: 1850, completion_tokens: 620, total_tokens: 2470 },
@@ -147,7 +147,7 @@ const demoSteps: TraceStep[] = [
     agent_name: 'Writer',
     step_type: 'llm_call',
     provider: 'openai',
-    model: 'gpt-4o',
+    model: 'gpt-5.4',  // Updated June 2026: gpt-4o deprecated
     system_prompt: 'You are a viral LinkedIn content writer. Write engaging, scannable posts that drive comments and shares. Use the hook-value-CTA framework.',
     prompt: 'Write a LinkedIn blog post based on this research brief. Target audience: AI developers and engineering leaders. Make it go viral.\n\n[Research Brief attached]',
     response: '🔌 Remember when you needed 7 different cables for your devices?\n\nThat was AI integration 18 months ago.\n\nEvery model needed its own custom connector to every tool. OpenAI → GitHub? Custom code. Claude → Slack? Another integration. Gemini → your database? Start from scratch.\n\nN models × M tools = engineering nightmare.\n\nThen MCP changed everything.\n\nThe Model Context Protocol is the USB-C moment for AI. One standard. Universal compatibility. And the numbers are staggering:\n\n📊 87% of enterprise AI teams now use MCP (Gartner 2026)\n📊 94% report reduced integration time\n📊 3.2x faster agent deployment\n📊 67% less "connector maintenance"\n\nThink about what that means:\n\nYou build ONE MCP server for your database.\nEvery AI model—current and future—can use it.\nNo more rewriting integrations when you switch providers.\n\nThe Linux Foundation backing sealed it. Microsoft, Google, AWS, Anthropic—all committed.\n\n2,400+ community servers already exist.\nYou can build your own in 20 lines of Python.\n\nThe N×M problem is solved. We\'re in N+M territory now.\n\nIf your team is still building custom AI integrations in 2026, you\'re maintaining a drawer full of proprietary cables in a USB-C world.\n\n---\n\n♻️ Repost if your team has made the switch\n💬 Comment: What was your worst "custom integration" horror story?',
@@ -197,7 +197,7 @@ const demoSteps: TraceStep[] = [
     agent_name: 'Editor',
     step_type: 'llm_call',
     provider: 'anthropic',
-    model: 'claude-4-sonnet',
+    model: 'claude-sonnet-4-6',  // Updated June 2026: claude-4-sonnet deprecated
     prompt: 'Review and refine this LinkedIn post for:\n1. Fact accuracy (verified: 87% stat is confirmed)\n2. LinkedIn algorithm optimization (no external links in body)\n3. Hook strength (first 2 lines must force "See More")\n4. Comment-driving CTA\n5. Readability (short paragraphs, white space)',
     response: 'The post is strong. Refinements made:\n\n✅ Hook: Opening metaphor is excellent — creates instant recognition\n✅ Stats: All verified, properly attributed\n✅ Structure: Great use of white space and emoji anchors\n✅ CTA: Dual CTA (repost + comment) maximizes engagement\n\nMinor edits:\n- Shortened paragraph 3 for better mobile readability\n- Added "👇" before the comment CTA to increase visual pull\n- Removed one redundant stat to keep it under 1,300 characters\n\nEngagement prediction: 9.2/10\nEstimated reach: 15,000-45,000 impressions',
     tokens: { prompt_tokens: 1200, completion_tokens: 340, total_tokens: 1540 },
@@ -230,7 +230,7 @@ const demoSteps: TraceStep[] = [
     agent_name: 'Orchestrator',
     step_type: 'llm_call',
     provider: 'anthropic',
-    model: 'claude-4-sonnet',
+    model: 'claude-sonnet-4-6',  // Updated June 2026: claude-4-sonnet deprecated
     prompt: 'Summarize the workflow completion status.',
     response: '✅ WORKFLOW COMPLETE\n\n📋 Summary:\n- Research: 3 sources analyzed, brief generated\n- Writing: 1,247 character post drafted (optimal length)\n- Editing: Facts verified, engagement score 9.2/10\n- Publishing: Scheduled for Apr 10, 9:00 AM UTC\n\n💰 Total cost: $0.0416\n⏱️ Total time: 18.5 seconds\n🔗 13 steps across 5 agents\n\nAll phases completed successfully.',
     tokens: { prompt_tokens: 380, completion_tokens: 210, total_tokens: 590 },
@@ -248,7 +248,7 @@ const failedSteps: TraceStep[] = [
     agent_name: 'CodeAgent',
     step_type: 'llm_call',
     provider: 'openai',
-    model: 'gpt-4o',
+    model: 'gpt-5.4',  // Updated June 2026: gpt-4o deprecated
     prompt: 'Refactor the authentication module to use OAuth2 with PKCE flow.',
     response: 'I\'ll start by examining the current auth module and planning the refactor...',
     tokens: { prompt_tokens: 450, completion_tokens: 180, total_tokens: 630 },
@@ -273,7 +273,7 @@ const failedSteps: TraceStep[] = [
     agent_name: 'CodeAgent',
     step_type: 'llm_call',
     provider: 'openai',
-    model: 'gpt-4o',
+    model: 'gpt-5.4',  // Updated June 2026: gpt-4o deprecated
     prompt: 'Now refactor handler.ts to implement PKCE flow...',
     response: 'Let me update the file with the new OAuth2 PKCE implementation...',
     tokens: { prompt_tokens: 1200, completion_tokens: 890, total_tokens: 2090 },
@@ -313,7 +313,7 @@ const failedSteps: TraceStep[] = [
     agent_name: 'CodeAgent',
     step_type: 'llm_call',
     provider: 'openai',
-    model: 'gpt-4o',
+    model: 'gpt-5.4',  // Updated June 2026: gpt-4o deprecated
     prompt: 'Tests failed. Fix the PKCE verifier mismatch error.',
     response: 'I see the issue — the code verifier needs to be stored before the challenge is generated...',
     tokens: { prompt_tokens: 2800, completion_tokens: 950, total_tokens: 3750 },
@@ -353,7 +353,7 @@ const failedSteps: TraceStep[] = [
     agent_name: 'CodeAgent',
     step_type: 'llm_call',
     provider: 'openai',
-    model: 'gpt-4o',
+    model: 'gpt-5.4',  // Updated June 2026: gpt-4o deprecated
     prompt: 'Still 2 tests failing. Fix: Missing redirect_uri and Token refresh loop.',
     response: 'The redirect_uri needs to be passed in the initial authorization request...',
     tokens: { prompt_tokens: 4200, completion_tokens: 1100, total_tokens: 5300 },
@@ -386,10 +386,10 @@ export const demoSessions: TraceSession[] = [
     ended_at: new Date(Date.now() - 98000).toISOString(),
     status: 'completed',
     agents: [
-      { name: 'Orchestrator', color: '#8b5cf6', model: 'claude-4-sonnet', provider: 'anthropic', step_count: 4, total_tokens: 1119, total_cost: 0.0081 },
-      { name: 'Researcher', color: '#06b6d4', model: 'claude-4-sonnet', provider: 'anthropic', step_count: 3, total_tokens: 2470, total_cost: 0.0149 },
-      { name: 'Writer', color: '#f59e0b', model: 'gpt-4o', provider: 'openai', step_count: 1, total_tokens: 2990, total_cost: 0.0142 },
-      { name: 'Editor', color: '#10b981', model: 'claude-4-sonnet', provider: 'anthropic', step_count: 2, total_tokens: 1540, total_cost: 0.0087 },
+      { name: 'Orchestrator', color: '#8b5cf6', model: 'claude-sonnet-4-6', provider: 'anthropic', step_count: 4, total_tokens: 1119, total_cost: 0.0081 },  // Updated June 2026: model deprecated
+      { name: 'Researcher', color: '#06b6d4', model: 'claude-sonnet-4-6', provider: 'anthropic', step_count: 3, total_tokens: 2470, total_cost: 0.0149 },  // Updated June 2026: model deprecated
+      { name: 'Writer', color: '#f59e0b', model: 'gpt-5.4', provider: 'openai', step_count: 1, total_tokens: 2990, total_cost: 0.0142 },  // Updated June 2026: model deprecated
+      { name: 'Editor', color: '#10b981', model: 'claude-sonnet-4-6', provider: 'anthropic', step_count: 2, total_tokens: 1540, total_cost: 0.0087 },  // Updated June 2026: model deprecated
       { name: 'Publisher', color: '#ef4444', provider: 'anthropic', step_count: 1, total_tokens: 0, total_cost: 0 },
     ],
     total_steps: 13,
@@ -406,7 +406,7 @@ export const demoSessions: TraceSession[] = [
     ended_at: new Date(Date.now() - 270000).toISOString(),
     status: 'failed',
     agents: [
-      { name: 'CodeAgent', color: '#3b82f6', model: 'gpt-4o', provider: 'openai', step_count: 10, total_tokens: 12400, total_cost: 0.0528 },
+      { name: 'CodeAgent', color: '#3b82f6', model: 'gpt-5.4', provider: 'openai', step_count: 10, total_tokens: 12400, total_cost: 0.0528 },  // Updated June 2026: model deprecated
     ],
     total_steps: 10,
     total_tokens: 12400,
