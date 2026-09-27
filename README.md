@@ -185,20 +185,23 @@ curl http://localhost:3000/api/ingest
 
 | Provider | Models | Auto-Wrap | Cost Tracking |
 |:---------|:-------|:----------|:-------------|
-| **OpenAI** | GPT-5.4, GPT-5.4-mini, o1, o3 | `wrap_openai()` | ✅ |
-| **Anthropic** | Claude Opus 4-8, Claude Sonnet 4-6 | `wrap_anthropic()` | ✅ |
-| **Google** | Gemini 3.5 Flash, Gemini 3.1 Pro | `wrap_google()` | ✅ |
-| **Ollama** | Llama 3, DeepSeek, Mistral, CodeLlama | `wrap_ollama()` | ✅ (free) |
+| **OpenAI** | GPT-5.6 Sol / Terra / Luna, GPT-4o, o1, o3, o3-mini | `wrap_openai()` | ✅ |
+| **Anthropic** | Claude Fable 5, Claude Mythos 5, Claude Sonnet 5, Claude 3.7 Sonnet | `wrap_anthropic()` | ✅ |
+| **Google** | Gemini 3.5 Flash, Gemini 3.1 Pro, Gemini 2.5 Pro/Flash | `wrap_google()` | ✅ |
+| **DeepSeek** | DeepSeek V3, DeepSeek R1, DeepSeek Chat | `wrap_openai()` / LiteLLM | ✅ |
+| **xAI** | Grok 4.5, Grok 2 | `wrap_openai()` / LiteLLM | ✅ |
+| **Ollama / Local** | Llama 3.3, DeepSeek, Qwen 2.5-Coder, Mistral | `wrap_ollama()` | ✅ (free) |
 | **LiteLLM** | Any provider via LiteLLM proxy | `wrap_litellm()` | ✅ |
 | **Custom** | Any OpenAI-compatible API | Manual | ✅ (configurable) |
 
 ---
 
-## 🔌 MCPlex Integration
+## 🔌 Ecosystem: MCPlex & The Forge
 
-AgentLens pairs with [MCPlex](https://github.com/ModernOps888/mcplex) to create a complete agent toolkit:
-- **MCPlex** = execution layer (routes, secures, caches MCP tools)
-- **AgentLens** = observability layer (traces, debugs, replays, alerts)
+AgentLens is part of a unified agentic development stack:
+- **[MCPlex](https://github.com/ModernOps888/mcplex)** = **Execution & Gateway Layer** (routes, secures, rate-limits, and caches MCP tools with 70–90% token savings)
+- **AgentLens** = **Observability & Debugging Layer** (traces, debugs, replays, token cost tracking, and anomaly detection)
+- **[The Forge](https://github.com/ModernOps888/the-forge)** = **Multi-Agent Code Evolution** (competes frontier LLMs against each other through a JIT compiler judge)
 
 Enable the bridge in MCPlex's `mcplex.toml`:
 

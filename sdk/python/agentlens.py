@@ -895,15 +895,19 @@ def _is_coroutine_function(fn: Any) -> bool:
 def _detect_provider(model: str) -> str:
     """Detect the LLM provider from a model name string."""
     model_lower = model.lower()
+    if "/" in model_lower:
+        # Provider prefix format like "ollama/llama3", "anthropic/claude-3", "openai/gpt-5"
+        return model_lower.split("/")[0]
     if "gpt" in model_lower or "o1" in model_lower or "o3" in model_lower:
         return "openai"
     if "claude" in model_lower:
         return "anthropic"
     if "gemini" in model_lower:
         return "google"
-    if "llama" in model_lower or "mistral" in model_lower or "deepseek" in model_lower:
+    if "deepseek" in model_lower:
+        return "deepseek"
+    if "grok" in model_lower:
+        return "xai"
+    if "llama" in model_lower or "mistral" in model_lower or "qwen" in model_lower:
         return "ollama"
-    if "/" in model_lower:
-        # LiteLLM format like "ollama/llama3", "anthropic/claude-3"
-        return model_lower.split("/")[0]
     return "unknown"
