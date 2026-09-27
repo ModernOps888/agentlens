@@ -306,14 +306,20 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 MIT License. See [LICENSE](LICENSE) for details.
 
-## 🔧 Recent Changes (v1.1 — Hardening)
+## 🔧 Recent Changes
 
+### v1.2 — Frontier & Reasoning Model Ecosystem Refresh (September 2026)
+- **Extended Frontier Pricing Matrix** — Added full pricing entries and cost tracking for GPT-5.6 Sol / Terra / Luna, reasoning flagships (`o1`, `o3`, `o3-mini`), Claude Fable 5, Mythos 5, Sonnet 5, and Claude 3.7 Sonnet, DeepSeek V3/R1, and xAI Grok 4.5.
+- **Provider Detection Engine** — Upgraded Python SDK `_detect_provider` with native classification for DeepSeek, xAI (Grok), and reasoning model prefixes.
+- **Unified Ecosystem Alignment** — Documented tripartite workflow across MCPlex (gateway), AgentLens (observability), and The Forge (evolution).
+
+### v1.1 — Hardening
 - **MCP Error Recovery** — Malformed JSON or tool handler crashes now log to stderr instead of silently dropping. IDE agents get proper error feedback.
 - **MCP Spec Compliance** — Added `resources/list` and `prompts/list` stubs, returning empty arrays instead of method-not-found errors.
 - **Graceful Shutdown** — MCP server now handles `SIGINT`/`SIGTERM` signals for clean exit.
 - **Cleanup Timer Lifecycle** — Added `destroy()` method to `TraceStore` that clears the cleanup interval timer, preventing leaks on server shutdown.
 - **Sampled-Out Session Pruning** — The `sampledOutSessions` Set is now bounded (auto-cleared at >10K entries), preventing unbounded memory growth.
-- **Updated Model Pricing** — Added GPT-5.4 family, Claude Sonnet 4.6/Opus 4.7, Gemini 2.5 Flash, DeepSeek V3, Qwen 2.5 Coder to the cost tracking table (May 2026).
+- **Updated Model Pricing** — Added GPT-5.4 family, Claude Sonnet 4.6/Opus 4.7, Gemini 2.5 Flash, DeepSeek V3, Qwen 2.5 Coder to the cost tracking table.
 
 ---
 
