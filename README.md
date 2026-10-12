@@ -9,6 +9,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://typescriptlang.org)
+[![Enterprise-Audits](https://img.shields.io/badge/Enterprise-Security_Audits-ff00e5.svg)](https://infinitytechstack.uk/consulting)
+
+> 🔍 **Enterprise AI Observability & Production Audits**: Need deterministic observability and security audits for your agent workflows? We provide **fixed-scope 3-day agent security audits** (£4,500) and **principal systems advisory** (£650). [**Explore Packages & Inquire →**](https://infinitytechstack.uk/consulting)
 
 ---
 
