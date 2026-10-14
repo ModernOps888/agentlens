@@ -7,7 +7,7 @@ and multi-agent interactions.
 Usage:
     import autogen
     from agentlens import AgentLens
-    from agentlens_autogen import TracedAgent, trace_groupchat
+    from agentlens.adapters.autogen_adapter import TracedAgent, trace_groupchat
 
     lens = AgentLens(session_name="My AutoGen Pipeline")
 
@@ -28,6 +28,18 @@ import time
 import json
 from typing import Any, Optional, Callable
 from agentlens import AgentLens
+
+
+def _safe_parse_args(raw_args: Any) -> dict:
+    if isinstance(raw_args, dict):
+        return raw_args
+    if isinstance(raw_args, str):
+        try:
+            parsed = json.loads(raw_args)
+            return parsed if isinstance(parsed, dict) else {"raw": raw_args}
+        except (json.JSONDecodeError, TypeError):
+            return {"raw": raw_args}
+    return {}
 
 
 class TracedAgent:
@@ -65,7 +77,7 @@ class TracedAgent:
                 if messages:
                     for msg in reversed(messages):
                         if msg.get('role') == 'user' or msg.get('name') != agent_name:
-                            prompt = msg.get('content', '')[:500]
+                            prompt = str(msg.get('content', ''))[:500]
                             break
 
                 response_text = str(result)[:500] if result else ""
@@ -73,10 +85,11 @@ class TracedAgent:
                 # Detect if this is a tool call response
                 if isinstance(result, dict) and 'tool_calls' in result:
                     for tool_call in result['tool_calls']:
+                        fn_info = tool_call.get('function', {}) if isinstance(tool_call, dict) else {}
                         lens.trace_tool_call(
                             agent_name=agent_name,
-                            tool_name=tool_call.get('function', {}).get('name', 'unknown'),
-                            tool_input=json.loads(tool_call.get('function', {}).get('arguments', '{}')),
+                            tool_name=fn_info.get('name', 'unknown'),
+                            tool_input=_safe_parse_args(fn_info.get('arguments', {})),
                             duration_ms=duration_ms,
                         )
                 else:

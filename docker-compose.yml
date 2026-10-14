@@ -30,8 +30,6 @@ services:
     ports:
       - "3100:3100"
       - "9090:9090"
-    volumes:
-      - ./mcplex.toml:/app/mcplex.toml:ro
     environment:
       # Enable the AgentLens bridge — events flow automatically
       AGENTLENS_URL: "http://agentlens:3000/api/ingest"

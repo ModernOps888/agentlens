@@ -780,11 +780,13 @@ function BudgetAlerts({
   const tokenStatus = tokenPercent >= 100 ? 'critical' : tokenPercent >= 80 ? 'warning' : 'ok';
 
   // Per-agent budget analysis
-  const hotAgent = session.agents.reduce((max, a) => a.total_cost > max.total_cost ? a : max, session.agents[0]);
-  const hotAgentPercent = budgetLimit > 0 ? (hotAgent.total_cost / budgetLimit) * 100 : 0;
+  const hotAgent = session.agents.length > 0
+    ? session.agents.reduce((max, a) => a.total_cost > max.total_cost ? a : max, session.agents[0])
+    : null;
+  const hotAgentPercent = budgetLimit > 0 && hotAgent ? (hotAgent.total_cost / budgetLimit) * 100 : 0;
 
   // Anomaly cost projection
-  const avgCostPerStep = session.total_cost / session.total_steps;
+  const avgCostPerStep = session.total_steps > 0 ? session.total_cost / session.total_steps : 0;
   const projectedCost50 = avgCostPerStep * 50;
   const projectedCost100 = avgCostPerStep * 100;
 
@@ -875,7 +877,9 @@ function BudgetAlerts({
                 <div className="budget-alert-title">Cost budget exceeded!</div>
                 <div className="budget-alert-desc">
                   Session cost ({formatCost(session.total_cost)}) has exceeded the budget of {formatCost(budgetLimit)}.
-                  Agent <strong style={{ color: hotAgent.color }}>{hotAgent.name}</strong> is the highest spender ({formatCost(hotAgent.total_cost)}, {hotAgentPercent.toFixed(0)}% of budget).
+                  {hotAgent && (
+                    <> Agent <strong style={{ color: hotAgent.color }}>{hotAgent.name}</strong> is the highest spender ({formatCost(hotAgent.total_cost)}, {hotAgentPercent.toFixed(0)}% of budget).</>
+                  )}
                 </div>
               </div>
             </div>
@@ -887,7 +891,7 @@ function BudgetAlerts({
                 <div className="budget-alert-title">Approaching cost limit</div>
                 <div className="budget-alert-desc">
                   Session is at {costPercent.toFixed(0)}% of the {formatCost(budgetLimit)} budget.
-                  At current rate, {Math.ceil((budgetLimit - session.total_cost) / avgCostPerStep)} more steps before limit.
+                  {avgCostPerStep > 0 && ` At current rate, ${Math.ceil((budgetLimit - session.total_cost) / avgCostPerStep)} more steps before limit.`}
                 </div>
               </div>
             </div>
@@ -966,8 +970,8 @@ function BudgetAlerts({
           </div>
           <div className="data-kv-row">
             <span className="data-kv-key">Top Spender</span>
-            <span className="data-kv-value" style={{ color: hotAgent.color }}>
-              {hotAgent.name} ({formatCost(hotAgent.total_cost)})
+            <span className="data-kv-value" style={{ color: hotAgent?.color || 'var(--text-secondary)' }}>
+              {hotAgent ? `${hotAgent.name} (${formatCost(hotAgent.total_cost)})` : '—'}
             </span>
           </div>
         </div>
@@ -1123,6 +1127,7 @@ function KeyboardShortcuts({ onClose }: { onClose: () => void }) {
     { keys: ['F'], desc: 'Focus search' },
     { keys: ['E'], desc: 'Export trace JSON' },
     { keys: ['C'], desc: 'Toggle cost dashboard' },
+    { keys: ['B'], desc: 'Toggle budget alerts' },
     { keys: ['D'], desc: 'Toggle compare/diff view' },
     { keys: ['?'], desc: 'Show keyboard shortcuts' },
     { keys: ['Esc'], desc: 'Close panel / modal' },
@@ -1152,7 +1157,8 @@ function KeyboardShortcuts({ onClose }: { onClose: () => void }) {
 
 // ─── Main App ───────────────────────────────────────────────────────────────
 export default function AgentLensApp() {
-  const [sessions] = useState<TraceSession[]>(demoSessions);
+  const [sessions, setSessions] = useState<TraceSession[]>(demoSessions);
+  const [hasLiveSessions, setHasLiveSessions] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1168,6 +1174,41 @@ export default function AgentLensApp() {
   const playIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const liveStreamRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Fetch live sessions on mount and subscribe to SSE stream
+  useEffect(() => {
+    const refreshSessions = async () => {
+      try {
+        const resp = await fetch('/api/sessions');
+        if (!resp.ok) return;
+        const all = await resp.json() as TraceSession[];
+        if (Array.isArray(all) && all.length > 0) {
+          setSessions(all);
+          const demoIds = new Set(demoSessions.map(d => d.id));
+          setHasLiveSessions(all.some(s => !demoIds.has(s.id)));
+        }
+      } catch {
+        // Offline or dev reload
+      }
+    };
+
+    refreshSessions();
+
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource('/api/stream');
+      es.addEventListener('session:new', () => { refreshSessions(); });
+      es.addEventListener('step:new', () => { refreshSessions(); });
+      es.addEventListener('session:update', () => { refreshSessions(); });
+      es.addEventListener('session:end', () => { refreshSessions(); });
+    } catch {
+      // Ignore SSE errors when offline
+    }
+
+    return () => {
+      es?.close();
+    };
+  }, []);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -1378,12 +1419,12 @@ export default function AgentLensApp() {
         e.preventDefault();
         togglePlayback();
       } else if (e.key === 'ArrowRight') {
-        if (!activeSession) return;
+        if (!activeSession || activeSession.steps.length === 0) return;
         const nextIdx = Math.min(playbackIndex + 1, activeSession.steps.length - 1);
         setPlaybackIndex(nextIdx);
         setActiveStepId(activeSession.steps[nextIdx].id);
       } else if (e.key === 'ArrowLeft') {
-        if (!activeSession) return;
+        if (!activeSession || activeSession.steps.length === 0) return;
         const prevIdx = Math.max(playbackIndex - 1, 0);
         setPlaybackIndex(prevIdx);
         setActiveStepId(activeSession.steps[prevIdx].id);
@@ -1406,6 +1447,8 @@ export default function AgentLensApp() {
         exportTraceJSON();
       } else if (e.key === 'c' || e.key === 'C') {
         setRightPanel(p => p === 'cost' ? 'inspector' : 'cost');
+      } else if (e.key === 'b' || e.key === 'B') {
+        setRightPanel(p => p === 'budget' ? 'inspector' : 'budget');
       } else if (e.key === 'd' || e.key === 'D') {
         setShowCompare(v => !v);
       } else if (e.key === '?') {
@@ -1422,7 +1465,7 @@ export default function AgentLensApp() {
 
   // Handle scrubber click
   const handleScrubberClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!activeSession) return;
+    if (!activeSession || activeSession.steps.length === 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percent = x / rect.width;
@@ -1434,7 +1477,7 @@ export default function AgentLensApp() {
     setActiveStepId(activeSession.steps[idx].id);
   }, [activeSession]);
 
-  const playbackPercent = activeSession
+  const playbackPercent = activeSession && activeSession.steps.length > 0
     ? ((playbackIndex + 1) / activeSession.steps.length) * 100
     : 0;
 
@@ -1458,7 +1501,9 @@ export default function AgentLensApp() {
           <span className="header-subtitle">AI Agent Debugger & Replay Inspector</span>
         </div>
         <div className="header-actions">
-          <div className="header-badge demo">⚡ DEMO MODE</div>
+          <div className={`header-badge ${hasLiveSessions ? 'live' : 'demo'}`}>
+            {hasLiveSessions ? '🟢 LIVE' : '⚡ DEMO MODE'}
+          </div>
           <div
             className="header-badge clickable"
             style={{ cursor: 'pointer' }}

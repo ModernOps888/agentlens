@@ -6,7 +6,7 @@ Automatically traces all CrewAI agent tasks, tool usage, and delegation.
 Usage:
     from crewai import Agent, Task, Crew
     from agentlens import AgentLens
-    from agentlens_crewai import TracedCrew
+    from agentlens.adapters.crewai_adapter import TracedCrew
 
     lens = AgentLens(session_name="My CrewAI Pipeline")
 
@@ -62,11 +62,13 @@ class TracedCrew:
                 duration_ms = int((time.time() - start) * 1000)
 
                 result_str = str(result)[:500] if result else ""
-                model_name = getattr(agent, 'llm', {})
-                if hasattr(model_name, 'model_name'):
-                    model_name = model_name.model_name
-                else:
-                    model_name = str(model_name)[:50]
+                llm_obj = getattr(agent, 'llm', None)
+                model_name = (
+                    getattr(llm_obj, 'model', None)
+                    or getattr(llm_obj, 'model_name', None)
+                    or (llm_obj if isinstance(llm_obj, str) else 'unknown')
+                )
+                model_name = str(model_name)[:50]
 
                 lens.trace_llm_call(
                     agent_name=agent_name,

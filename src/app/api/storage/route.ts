@@ -19,22 +19,22 @@ export async function POST(request: Request) {
     // Validate and apply config updates
     const updates: Record<string, unknown> = {};
 
-    if (typeof body.samplingRate === 'number') {
+    if (typeof body.samplingRate === 'number' && Number.isFinite(body.samplingRate)) {
       updates.samplingRate = Math.max(0, Math.min(1, body.samplingRate));
     }
-    if (typeof body.ttlMs === 'number') {
+    if (typeof body.ttlMs === 'number' && Number.isFinite(body.ttlMs)) {
       updates.ttlMs = Math.max(0, body.ttlMs);
     }
-    if (typeof body.maxSessions === 'number') {
+    if (typeof body.maxSessions === 'number' && Number.isFinite(body.maxSessions)) {
       updates.maxSessions = Math.max(0, Math.floor(body.maxSessions));
     }
-    if (typeof body.maxStepsPerSession === 'number') {
+    if (typeof body.maxStepsPerSession === 'number' && Number.isFinite(body.maxStepsPerSession)) {
       updates.maxStepsPerSession = Math.max(0, Math.floor(body.maxStepsPerSession));
     }
     if (typeof body.storePayloads === 'boolean') {
       updates.storePayloads = body.storePayloads;
     }
-    if (typeof body.maxPayloadChars === 'number') {
+    if (typeof body.maxPayloadChars === 'number' && Number.isFinite(body.maxPayloadChars)) {
       updates.maxPayloadChars = Math.max(0, Math.floor(body.maxPayloadChars));
     }
 

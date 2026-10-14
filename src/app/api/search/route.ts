@@ -5,6 +5,7 @@
 
 import { NextResponse } from 'next/server';
 import { traceStore } from '@/lib/trace-store';
+import { demoSessions } from '@/lib/demo-data';
 import type { TraceStep } from '@/lib/types';
 
 export async function GET(request: Request) {
@@ -15,9 +16,12 @@ export async function GET(request: Request) {
     const typeFilter = searchParams.get('type') || '';
     const statusFilter = searchParams.get('status') || '';
     const sessionFilter = searchParams.get('session') || '';
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50', 10), 200);
+    const parsedLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 200) : 50;
 
-    const sessions = traceStore.getAllSessions();
+    const liveSessions = traceStore.getAllSessions();
+    const liveIds = new Set(liveSessions.map(s => s.id));
+    const sessions = [...liveSessions, ...demoSessions.filter(s => !liveIds.has(s.id))];
     const results: Array<{
       session_id: string;
       session_name: string;

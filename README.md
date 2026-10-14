@@ -91,17 +91,17 @@ lens = AgentLens(session_name="My Agent Pipeline")
 # Option A: Wrap OpenAI (automatic tracing — zero code changes)
 from openai import OpenAI
 client = lens.wrap_openai(OpenAI(), agent_name="MyAgent")
-response = client.chat.completions.create(model="gpt-5.4", messages=[...])  # Updated June 2026
+response = client.chat.completions.create(model="gpt-6-astra", messages=[...])
 # ^ Every call is now traced in AgentLens!
 
 # Option B: Wrap Anthropic (Claude)
 from anthropic import Anthropic
 client = lens.wrap_anthropic(Anthropic(), agent_name="ClaudeAgent")
-response = client.messages.create(model="claude-sonnet-4-6", max_tokens=1024, messages=[...])  # Updated June 2026
+response = client.messages.create(model="claude-sonnet-5-5", max_tokens=1024, messages=[...])
 
 # Option C: Wrap Google Gemini
 import google.generativeai as genai
-model = lens.wrap_google(genai.GenerativeModel("gemini-3.5-flash")  # Updated June 2026, agent_name="GeminiAgent")
+model = lens.wrap_google(genai.GenerativeModel("gemini-3.8-flash"), agent_name="GeminiAgent")
 response = model.generate_content("Explain quantum computing")
 
 # Option D: Wrap Ollama (local LLMs — no package needed)
@@ -115,7 +115,7 @@ litellm.callbacks = [lens.wrap_litellm(agent_name="MultiModel")]
 # Option F: Manual tracing
 lens.trace_llm_call(
     agent_name="Researcher",
-    model="gpt-5.4",  # Updated June 2026
+    model="gpt-6-astra",
     prompt="Research this topic...",
     response="Here are the findings...",
     tokens={"prompt_tokens": 150, "completion_tokens": 200, "total_tokens": 350},
@@ -139,7 +139,7 @@ lens.end()  # Mark session complete
 # Send a trace step
 curl -X POST http://localhost:3000/api/ingest \
   -H "Content-Type: application/json" \
-  -d '{"session_id":"my-session","session_name":"Test","agent_name":"Agent1","step_type":"llm_call","model":"gpt-5.4","prompt":"Hello","response":"Hi there"}'
+  -d '{"session_id":"my-session","session_name":"Test","agent_name":"Agent1","step_type":"llm_call","model":"gpt-6-astra","prompt":"Hello","response":"Hi there"}'
 
 # End a session
 curl -X POST "http://localhost:3000/api/ingest?action=end" \
@@ -188,11 +188,12 @@ curl http://localhost:3000/api/ingest
 
 | Provider | Models | Auto-Wrap | Cost Tracking |
 |:---------|:-------|:----------|:-------------|
-| **OpenAI** | GPT-5.6 Sol / Terra / Luna, GPT-4o, o1, o3, o3-mini | `wrap_openai()` | ✅ |
-| **Anthropic** | Claude Fable 5, Claude Mythos 5, Claude Sonnet 5, Claude 3.7 Sonnet | `wrap_anthropic()` | ✅ |
-| **Google** | Gemini 3.5 Flash, Gemini 3.1 Pro, Gemini 2.5 Pro/Flash | `wrap_google()` | ✅ |
-| **DeepSeek** | DeepSeek V3, DeepSeek R1, DeepSeek Chat | `wrap_openai()` / LiteLLM | ✅ |
-| **xAI** | Grok 4.5, Grok 2 | `wrap_openai()` / LiteLLM | ✅ |
+| **OpenAI** | GPT-6 Astra, GPT-6.1 Sol, GPT-5.6 Sol / Terra / Luna, GPT-5.4, o3, o3-mini | `wrap_openai()` | ✅ |
+| **Anthropic** | Claude Opus 5.5, Claude Sonnet 5.5, Claude Haiku 5.5, Claude Fable 5.1 | `wrap_anthropic()` | ✅ |
+| **Google** | Gemini 4 Argon, Gemini 3.8 Pro, Gemini 3.8 Flash, Gemini 2.5 Pro/Flash | `wrap_google()` | ✅ |
+| **DeepSeek** | DeepSeek V4 Pro, DeepSeek V3, DeepSeek R1 | `wrap_openai()` / LiteLLM | ✅ |
+| **xAI** | Grok 4.7, Grok 4.6, Grok 4 | `wrap_openai()` / LiteLLM | ✅ |
+| **Meta / Open** | Muse Spark 1.3, Llama 3.3 70B | `wrap_openai()` / LiteLLM | ✅ |
 | **Ollama / Local** | Llama 3.3, DeepSeek, Qwen 2.5-Coder, Mistral | `wrap_ollama()` | ✅ (free) |
 | **LiteLLM** | Any provider via LiteLLM proxy | `wrap_litellm()` | ✅ |
 | **Custom** | Any OpenAI-compatible API | Manual | ✅ (configurable) |
@@ -311,18 +312,17 @@ MIT License. See [LICENSE](LICENSE) for details.
 
 ## 🔧 Recent Changes
 
-### v1.2 — Frontier & Reasoning Model Ecosystem Refresh (September 2026)
-- **Extended Frontier Pricing Matrix** — Added full pricing entries and cost tracking for GPT-5.6 Sol / Terra / Luna, reasoning flagships (`o1`, `o3`, `o3-mini`), Claude Fable 5, Mythos 5, Sonnet 5, and Claude 3.7 Sonnet, DeepSeek V3/R1, and xAI Grok 4.5.
-- **Provider Detection Engine** — Upgraded Python SDK `_detect_provider` with native classification for DeepSeek, xAI (Grok), and reasoning model prefixes.
-- **Unified Ecosystem Alignment** — Documented tripartite workflow across MCPlex (gateway), AgentLens (observability), and The Forge (evolution).
+### v1.3 — October 2026 Frontier Model Horizon & Core Hardening
+- **October 2026 Frontier Pricing Matrix** — Added full pricing entries and normalized cost calculation (6-decimal precision, provider/tag/date-suffix stripping) for GPT-6 Astra, GPT-6.1 Sol, Claude Opus 5.5, Claude Sonnet 5.5, Claude Haiku 5.5, Claude Fable 5.1, Gemini 4 Argon, Gemini 3.8 Pro/Flash, Grok 4.7, DeepSeek V4 Pro, and Meta Muse Spark 1.3.
+- **Provider Detection & SDK Hardening** — Upgraded Python & Node.js SDK provider detection (`_detect_provider`), Anthropic prompt-cache token accounting, multimodal content coercion, and framework adapters (LangGraph, AutoGen, CrewAI, Google ADK).
+- **TraceStore & Real-Time UI Streaming** — Fixed anomaly retention ordering before step limits, per-agent loop detection, sampling gate ordering, global Next.js singleton caching, and live SSE streaming in the dashboard.
 
 ### v1.1 — Hardening
-- **MCP Error Recovery** — Malformed JSON or tool handler crashes now log to stderr instead of silently dropping. IDE agents get proper error feedback.
+- **MCP Error Recovery** — Malformed JSON or tool handler crashes now return JSON-RPC parse errors and log to stderr instead of silently dropping.
 - **MCP Spec Compliance** — Added `resources/list` and `prompts/list` stubs, returning empty arrays instead of method-not-found errors.
 - **Graceful Shutdown** — MCP server now handles `SIGINT`/`SIGTERM` signals for clean exit.
-- **Cleanup Timer Lifecycle** — Added `destroy()` method to `TraceStore` that clears the cleanup interval timer, preventing leaks on server shutdown.
+- **Cleanup Timer Lifecycle** — Added `destroy()` method to `TraceStore` that clears cleanup and persistence timers, preventing leaks on server shutdown.
 - **Sampled-Out Session Pruning** — The `sampledOutSessions` Set is now bounded (auto-cleared at >10K entries), preventing unbounded memory growth.
-- **Updated Model Pricing** — Added GPT-5.4 family, Claude Sonnet 4.6/Opus 4.7, Gemini 2.5 Flash, DeepSeek V3, Qwen 2.5 Coder to the cost tracking table.
 
 ---
 

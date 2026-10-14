@@ -13,7 +13,7 @@
  *        "mcpServers": {
  *          "agentlens": {
  *            "command": "node",
- *            "args": ["path/to/agentlens/src/mcp-server-entry.mjs"],
+ *            "args": ["path/to/agentlens/src/mcp-server-entry.mts"],
  *            "env": { "AGENTLENS_URL": "http://127.0.0.1:3000" }
  *          }
  *        }
@@ -426,12 +426,28 @@ const rl = readline.createInterface({
 rl.on('line', async (line: string) => {
   if (!line.trim()) return;
 
+  let msg: JsonRpcRequest;
   try {
-    const msg = JSON.parse(line) as JsonRpcRequest;
+    msg = JSON.parse(line) as JsonRpcRequest;
+  } catch (err) {
+    process.stderr.write(`MCP parse error: ${err}\n`);
+    process.stdout.write(
+      JSON.stringify({
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32700, message: 'Parse error' },
+      }) + '\n'
+    );
+    return;
+  }
+
+  try {
     await handleMessage(msg);
   } catch (err) {
-    // Malformed JSON or handler crash — send error if we can extract an ID
-    process.stderr.write(`MCP parse/handle error: ${err}\n`);
+    process.stderr.write(`MCP handle error: ${err}\n`);
+    if (msg.id !== undefined) {
+      sendError(msg.id, -32603, 'Internal error');
+    }
   }
 });
 

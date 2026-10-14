@@ -239,14 +239,17 @@ class TraceStore {
 
   /** Determine if a session should be sampled (captured) */
   private shouldSample(sessionId: string, raw: RawStep): boolean {
-    // Always capture errors and anomalous sessions  
-    if (raw.status === 'error' || raw.error_message) return true;
-
-    // If we already decided to drop this session, keep dropping
-    if (this.sampledOutSessions.has(sessionId)) return false;
+    // Always capture errors and anomalous sessions
+    if (raw.status === 'error' || raw.error_message) {
+      this.sampledOutSessions.delete(sessionId);
+      return true;
+    }
 
     // If session already exists, continue capturing it
     if (this.sessions.has(sessionId)) return true;
+
+    // If we already decided to drop this session, keep dropping
+    if (this.sampledOutSessions.has(sessionId)) return false;
 
     // New session — apply sampling rate
     if (this.config.samplingRate >= 1.0) return true;
@@ -263,17 +266,18 @@ class TraceStore {
   }
 
   /** Truncate a string payload to configured max length */
-  private truncatePayload(text: string | undefined): string | undefined {
-    if (!text) return text;
+  private truncatePayload(text: unknown): string | undefined {
+    if (text == null || text === '') return typeof text === 'string' ? text : undefined;
+    const strText = typeof text === 'string' ? text : JSON.stringify(text);
     if (!this.config.storePayloads) {
       this.stats.totalTruncatedPayloads++;
       return undefined; // Strip payload entirely
     }
-    if (this.config.maxPayloadChars > 0 && text.length > this.config.maxPayloadChars) {
+    if (this.config.maxPayloadChars > 0 && strText.length > this.config.maxPayloadChars) {
       this.stats.totalTruncatedPayloads++;
-      return text.substring(0, this.config.maxPayloadChars) + `... [truncated at ${this.config.maxPayloadChars} chars]`;
+      return strText.substring(0, this.config.maxPayloadChars) + `... [truncated at ${this.config.maxPayloadChars} chars]`;
     }
-    return text;
+    return strText;
   }
 
   /** Subscribe to real-time trace events */
@@ -295,7 +299,7 @@ class TraceStore {
   }
 
   ingestStep(raw: RawStep): TraceStep {
-    const sessionId = raw.session_id;
+    const sessionId = String(raw.session_id);
     const now = new Date().toISOString();
     this.stats.totalIngestedSteps++;
 
@@ -306,7 +310,7 @@ class TraceStore {
       return {
         id: `${sessionId}-dropped`,
         session_id: sessionId,
-        agent_name: raw.agent_name,
+        agent_name: String(raw.agent_name || 'Agent'),
         agent_color: '#666',
         step_index: -1,
         step_type: (raw.step_type || 'llm_call') as TraceStep['step_type'],
@@ -316,13 +320,18 @@ class TraceStore {
       };
     }
 
+    // Coerce prompt/system_prompt/response to strings before fingerprinting & truncation
+    const rawPromptStr = raw.prompt != null
+      ? (typeof raw.prompt === 'string' ? raw.prompt : JSON.stringify(raw.prompt))
+      : undefined;
+
     // ─── Fingerprint BEFORE truncation (for loop detection) ────────────
-    const promptFingerprint = raw.prompt ? this.computeSimHash(raw.prompt) : undefined;
+    const promptFingerprint = rawPromptStr ? this.computeSimHash(rawPromptStr) : undefined;
 
     // ─── Payload truncation ─────────────────────────────────────────────
-    raw.prompt = this.truncatePayload(raw.prompt);
-    raw.system_prompt = this.truncatePayload(raw.system_prompt);
-    raw.response = this.truncatePayload(raw.response);
+    const prompt = this.truncatePayload(rawPromptStr);
+    const systemPrompt = this.truncatePayload(raw.system_prompt);
+    const response = this.truncatePayload(raw.response);
 
     // Create session if it doesn't exist
     const isNewSession = !this.sessions.has(sessionId);
@@ -344,30 +353,43 @@ class TraceStore {
 
     const session = this.sessions.get(sessionId)!;
 
+    // Normalize token counts so NaN or missing total_tokens never poison session totals
+    let normalizedTokens: TraceStep['tokens'] | undefined;
+    if (raw.tokens && typeof raw.tokens === 'object') {
+      const promptTokens = Number(raw.tokens.prompt_tokens) || 0;
+      const completionTokens = Number(raw.tokens.completion_tokens) || 0;
+      const totalTokens = Number(raw.tokens.total_tokens) || (promptTokens + completionTokens);
+      normalizedTokens = {
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+      };
+    }
+
     // Auto-calculate cost if tokens and model provided
     let cost: CostBreakdown | undefined;
-    if (raw.tokens && raw.model) {
-      cost = calculateCost(raw.model, raw.tokens);
+    if (normalizedTokens && raw.model) {
+      cost = calculateCost(String(raw.model), normalizedTokens);
     }
 
     // Build the step
     const step: TraceStep = {
       id: `${sessionId}-step-${session.total_steps}`,
       session_id: sessionId,
-      agent_name: raw.agent_name,
-      agent_color: this.getAgentColor(raw.agent_name),
+      agent_name: String(raw.agent_name || 'Agent'),
+      agent_color: this.getAgentColor(String(raw.agent_name || 'Agent')),
       step_index: session.total_steps,
       step_type: (raw.step_type || 'llm_call') as TraceStep['step_type'],
       status: (raw.status || 'success') as TraceStep['status'],
       timestamp: raw.timestamp || now,
-      duration_ms: raw.duration_ms || 0,
+      duration_ms: Number(raw.duration_ms) || 0,
       provider: raw.provider as TraceStep['provider'],
       model: raw.model,
-      prompt: raw.prompt,
-      system_prompt: raw.system_prompt,
-      response: raw.response,
+      prompt,
+      system_prompt: systemPrompt,
+      response,
       temperature: raw.temperature,
-      tokens: raw.tokens,
+      tokens: normalizedTokens,
       cost,
       tool_name: raw.tool_name,
       tool_input: raw.tool_input,
@@ -387,10 +409,13 @@ class TraceStore {
         tool_name: raw.mcp_tool,
         params: raw.mcp_params || {},
         result: raw.mcp_result,
-        duration_ms: raw.duration_ms || 0,
+        duration_ms: Number(raw.duration_ms) || 0,
         valid: true,
       };
     }
+
+    // Run anomaly detection BEFORE checking isImportantStep and pushing step to session.steps
+    this.detectAnomalies(session, step);
 
     // Add step to session (with maxStepsPerSession enforcement)
     const overStepLimit = this.config.maxStepsPerSession > 0 &&
@@ -407,7 +432,7 @@ class TraceStore {
       session.total_tokens += step.tokens.total_tokens;
     }
     if (cost) {
-      session.total_cost += cost.total_cost;
+      session.total_cost = Math.round((session.total_cost + cost.total_cost) * 1_000_000) / 1_000_000;
     }
 
     // Update agent info
@@ -426,15 +451,12 @@ class TraceStore {
     }
     agentInfo.step_count++;
     if (step.tokens) agentInfo.total_tokens += step.tokens.total_tokens;
-    if (cost) agentInfo.total_cost += cost.total_cost;
+    if (cost) agentInfo.total_cost = Math.round((agentInfo.total_cost + cost.total_cost) * 1_000_000) / 1_000_000;
 
     // Update session status
     if (step.status === 'error') {
       session.status = 'failed';
     }
-
-    // Run anomaly detection
-    this.detectAnomalies(session, step);
 
     // Emit events for SSE subscribers
     if (isNewSession) {
@@ -458,30 +480,35 @@ class TraceStore {
 
   private detectAnomalies(session: TraceSession, step: TraceStep) {
     // ─── Loop detection (works with AND without payloads) ─────────────
-    if (session.steps.length >= 2) {
-      const prev = session.steps[session.steps.length - 2];
-      if (prev.agent_name === step.agent_name) {
-        let similarity = 0;
+    let prev: TraceStep | undefined;
+    for (let i = session.steps.length - 1; i >= 0; i--) {
+      if (session.steps[i].id !== step.id && session.steps[i].agent_name === step.agent_name) {
+        prev = session.steps[i];
+        break;
+      }
+    }
 
-        // Prefer full-text comparison when payloads are available
-        if (step.prompt && prev.prompt) {
-          similarity = this.textSimilarity(step.prompt, prev.prompt);
-        }
-        // Fall back to SimHash fingerprint comparison (works when storePayloads: false)
-        else if (step.promptFingerprint != null && prev.promptFingerprint != null) {
-          similarity = this.simHashSimilarity(step.promptFingerprint, prev.promptFingerprint);
-        }
+    if (prev) {
+      let similarity = 0;
 
-        if (similarity > 0.85) {
-          step.anomalies = step.anomalies || [];
-          step.anomalies.push({
-            type: 'repeated_prompt',
-            severity: 'warning',
-            message: `${(similarity * 100).toFixed(0)}% similar to previous prompt`,
-            details: 'Possible infinite loop detected',
-          });
-          session.anomaly_count++;
-        }
+      // Prefer full-text comparison when payloads are available
+      if (step.prompt && prev.prompt) {
+        similarity = this.textSimilarity(step.prompt, prev.prompt);
+      }
+      // Fall back to SimHash fingerprint comparison (works when storePayloads: false)
+      else if (step.promptFingerprint != null && prev.promptFingerprint != null) {
+        similarity = this.simHashSimilarity(step.promptFingerprint, prev.promptFingerprint);
+      }
+
+      if (similarity > 0.85) {
+        step.anomalies = step.anomalies || [];
+        step.anomalies.push({
+          type: 'repeated_prompt',
+          severity: 'warning',
+          message: `${(similarity * 100).toFixed(0)}% similar to previous prompt`,
+          details: 'Possible infinite loop detected',
+        });
+        session.anomaly_count++;
       }
     }
 
@@ -598,6 +625,9 @@ class TraceStore {
 
   clear() {
     this.sessions.clear();
+    this.agentColorMap.clear();
+    this.colorIndex = 0;
+    this.sampledOutSessions.clear();
     this.flushToDisk();
   }
 
@@ -606,6 +636,10 @@ class TraceStore {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = null;
+    }
+    if (this.persistTimer) {
+      clearTimeout(this.persistTimer);
+      this.persistTimer = null;
     }
     this.listeners.clear();
   }
@@ -622,6 +656,7 @@ class TraceStore {
   }
 }
 
-// Singleton instance
-export const traceStore = new TraceStore();
+// Singleton instance cached on globalThis so all Next.js App Router routes share state
+const globalForTraceStore = globalThis as unknown as { traceStore?: TraceStore };
+export const traceStore = globalForTraceStore.traceStore ?? (globalForTraceStore.traceStore = new TraceStore());
 

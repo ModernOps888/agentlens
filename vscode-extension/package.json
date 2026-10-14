@@ -13,7 +13,6 @@
   },
   "categories": ["Debuggers", "Visualization", "Other"],
   "keywords": ["ai", "agents", "llm", "debugging", "tracing", "openai", "mcp"],
-  "icon": "icon.png",
   "activationEvents": [
     "onCommand:agentlens.openPanel",
     "onCommand:agentlens.startCapture",

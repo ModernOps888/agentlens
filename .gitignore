@@ -40,3 +40,7 @@ next-env.d.ts
 
 # AgentLens persisted trace data
 .data/
+
+# Python bytecode
+__pycache__/
+*.py[cod]

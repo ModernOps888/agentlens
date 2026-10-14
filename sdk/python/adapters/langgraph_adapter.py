@@ -7,7 +7,7 @@ and state transitions.
 Usage:
     from langgraph.graph import StateGraph
     from agentlens import AgentLens
-    from agentlens_langgraph import TracedGraph
+    from agentlens.adapters.langgraph_adapter import TracedGraph
 
     lens = AgentLens(session_name="My LangGraph Pipeline")
     
@@ -108,6 +108,7 @@ class LangGraphCallbackHandler:
     def __init__(self, lens: AgentLens, agent_name: str = "LangGraph"):
         self.lens = lens
         self.agent_name = agent_name
+        self._serialized: Optional[dict] = None
 
     def on_chain_start(self, serialized: dict, inputs: dict, **kwargs):
         self.lens.trace_decision(
@@ -121,6 +122,7 @@ class LangGraphCallbackHandler:
     def on_llm_start(self, serialized: dict, prompts: list, **kwargs):
         self._llm_start_time = time.time()
         self._llm_prompts = prompts
+        self._serialized = serialized
 
     def on_llm_end(self, response: Any, **kwargs):
         duration_ms = int((time.time() - getattr(self, '_llm_start_time', time.time())) * 1000)
@@ -142,9 +144,16 @@ class LangGraphCallbackHandler:
                     "total_tokens": usage.get('total_tokens', 0),
                 }
 
+        serialized_dict = getattr(self, '_serialized', None)
+        model_name = (
+            serialized_dict.get('name', 'unknown')
+            if isinstance(serialized_dict, dict)
+            else 'unknown'
+        )
+
         self.lens.trace_llm_call(
             agent_name=self.agent_name,
-            model=serialized.get('name', 'unknown') if hasattr(self, '_serialized') else 'unknown',
+            model=model_name,
             prompt=prompts[0] if prompts else "",
             response=response_text,
             tokens=tokens,

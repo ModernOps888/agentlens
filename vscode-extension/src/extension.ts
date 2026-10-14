@@ -8,7 +8,6 @@
 import * as vscode from 'vscode';
 
 let statusBarItem: vscode.StatusBarItem;
-let eventSource: EventSource | null = null;
 let isCapturing = false;
 
 export function activate(context: vscode.ExtensionContext) {
@@ -58,6 +57,16 @@ function openPanel(context: vscode.ExtensionContext) {
   );
 
   const serverUrl = vscode.workspace.getConfiguration('agentlens').get('serverUrl') || 'http://localhost:3000';
+
+  panel.webview.onDidReceiveMessage(
+    (msg: { command?: string; url?: string }) => {
+      if (msg.command === 'openExternal' && msg.url) {
+        vscode.env.openExternal(vscode.Uri.parse(msg.url));
+      }
+    },
+    undefined,
+    context.subscriptions
+  );
 
   panel.webview.html = getWebviewContent(serverUrl as string);
 }

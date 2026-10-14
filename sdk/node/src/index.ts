@@ -12,18 +12,18 @@
  *
  * // Automatic OpenAI wrapping
  * const client = lens.wrapOpenAI(new OpenAI());
- * const response = await client.chat.completions.create({ model: 'gpt-5.4', messages: [...] });
+ * const response = await client.chat.completions.create({ model: 'gpt-6-astra', messages: [...] });
  *
  * // Automatic Anthropic (Claude) wrapping
  * const claude = lens.wrapAnthropic(new Anthropic());
- * const msg = await claude.messages.create({ model: 'claude-sonnet-4-6', max_tokens: 1024, messages: [...] });
+ * const msg = await claude.messages.create({ model: 'claude-sonnet-5-5', max_tokens: 1024, messages: [...] });
  *
  * // Automatic Google Gemini wrapping
- * const model = lens.wrapGoogle(genAI.getGenerativeModel({ model: 'gemini-3.5-flash' }));
+ * const model = lens.wrapGoogle(genAI.getGenerativeModel({ model: 'gemini-3.8-flash' }));
  * const result = await model.generateContent('Explain quantum computing');
  *
  * // Manual tracing
- * await lens.traceLLMCall({ agentName: 'Agent', model: 'gpt-5.4', prompt: '...', response: '...' });
+ * await lens.traceLLMCall({ agentName: 'Agent', model: 'gpt-6-astra', prompt: '...', response: '...' });
  *
  * await lens.end();
  * ```
@@ -97,7 +97,11 @@ export class AgentLens {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        signal: AbortSignal.timeout(5000),
       });
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status} ${resp.statusText}`);
+      }
       return await resp.json() as Record<string, unknown>;
     } catch (err) {
       console.warn(`AgentLens send failed: ${err}`);
@@ -224,12 +228,18 @@ export class AgentLens {
             const durationMs = Date.now() - start;
 
             const kwargs = (args[0] || {}) as Record<string, unknown>;
-            const messages = (kwargs.messages || []) as Array<Record<string, string>>;
+            const messages = (kwargs.messages || []) as Array<Record<string, unknown>>;
             let userPrompt = '';
             let systemPrompt = '';
             for (const msg of messages) {
-              if (msg.role === 'user') userPrompt = msg.content || '';
-              if (msg.role === 'system') systemPrompt = msg.content || '';
+              const rawContent = msg.content;
+              const textContent = typeof rawContent === 'string'
+                ? rawContent
+                : Array.isArray(rawContent)
+                  ? rawContent.map((b: Record<string, unknown>) => (b.text as string) || '').join(' ')
+                  : String(rawContent ?? '');
+              if (msg.role === 'user') userPrompt = textContent;
+              if (msg.role === 'system') systemPrompt = textContent;
             }
 
             let responseText = '';
@@ -249,10 +259,19 @@ export class AgentLens {
               };
             }
 
+            const actualModel = (kwargs.model as string) || (response.model as string) || 'unknown';
+            const modelLower = actualModel.toLowerCase();
+            let provider = 'openai';
+            if (modelLower.includes('grok')) provider = 'xai';
+            else if (modelLower.includes('deepseek')) provider = 'deepseek';
+            else if (modelLower.includes('claude') || modelLower.includes('sonnet') || modelLower.includes('opus')) provider = 'anthropic';
+            else if (modelLower.includes('gemini') || modelLower.includes('argon')) provider = 'google';
+            else if (modelLower.includes('muse-spark')) provider = 'meta';
+
             await lens.traceLLMCall({
               agentName,
-              model: (kwargs.model as string) || 'unknown',
-              provider: 'openai',
+              model: actualModel,
+              provider,
               prompt: userPrompt,
               systemPrompt,
               response: responseText,
@@ -284,7 +303,7 @@ export class AgentLens {
    * import Anthropic from '@anthropic-ai/sdk';
    * const claude = lens.wrapAnthropic(new Anthropic(), 'ClaudeAgent');
    * const msg = await claude.messages.create({
-   *   model: 'claude-sonnet-4-6',  // Updated June 2026: model deprecated
+   *   model: 'claude-sonnet-5-5',
    *   max_tokens: 1024,
    *   messages: [{ role: 'user', content: 'Hello Claude' }],
    * });
@@ -359,7 +378,7 @@ export class AgentLens {
           let tokens: TokenUsage | undefined;
           const usage = response.usage as Record<string, number> | undefined;
           if (usage) {
-            const inputTokens = usage.input_tokens || 0;
+            const inputTokens = (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
             const outputTokens = usage.output_tokens || 0;
             tokens = {
               prompt_tokens: inputTokens,
@@ -402,7 +421,7 @@ export class AgentLens {
    * import { GoogleGenerativeAI } from '@google/generative-ai';
    * const genAI = new GoogleGenerativeAI('API_KEY');
    * const model = lens.wrapGoogle(
-   *   genAI.getGenerativeModel({ model: 'gemini-3.5-flash' }),
+   *   genAI.getGenerativeModel({ model: 'gemini-3.8-flash' }),
    *   'GeminiAgent'
    * );
    * const result = await model.generateContent('Explain quantum computing');

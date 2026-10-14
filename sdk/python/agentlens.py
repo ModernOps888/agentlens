@@ -19,7 +19,7 @@ Usage:
     response = client.messages.create(...)  # Automatically traced!
 
     # Option 3: Wrap your Google Gemini client (automatic capture)
-    model = lens.wrap_google(genai.GenerativeModel("gemini-3.5-flash"))  # Updated June 2026
+    model = lens.wrap_google(genai.GenerativeModel("gemini-3.8-flash"))
     response = model.generate_content(...)  # Automatically traced!
 
     # Option 4: Wrap Ollama (automatic capture)
@@ -29,7 +29,7 @@ Usage:
     # Option 5: Manual tracing (any provider)
     lens.trace_llm_call(
         agent_name="Researcher",
-        model="gpt-5.4",  # Updated June 2026: gpt-4o deprecated
+        model="gpt-6-astra",
         prompt="Research this topic...",
         response="Here are the findings...",
         tokens={"prompt_tokens": 150, "completion_tokens": 200, "total_tokens": 350},
@@ -328,7 +328,7 @@ class AgentLens:
         Usage:
             from openai import OpenAI
             client = lens.wrap_openai(OpenAI(), agent_name="MyAgent")
-            response = client.chat.completions.create(model="gpt-5.4",  # Updated June 2026: gpt-4o deprecated messages=[...])
+            response = client.chat.completions.create(model="gpt-6-astra", messages=[...])
             # ^ This call is automatically traced in AgentLens!
         """
         lens = self
@@ -341,15 +341,25 @@ class AgentLens:
                 duration_ms = int((time.time() - start) * 1000)
 
                 # Extract data from the response
-                model = kwargs.get("model", getattr(response, "model", "unknown"))
+                actual_model = str(kwargs.get("model") or getattr(response, "model", "unknown"))
                 messages = kwargs.get("messages", [])
                 system_prompt = ""
                 user_prompt = ""
                 for msg in messages:
+                    if not isinstance(msg, dict):
+                        continue
+                    raw_content = msg.get("content", "")
+                    if isinstance(raw_content, list):
+                        text_content = " ".join(
+                            b.get("text", "") if isinstance(b, dict) else str(b)
+                            for b in raw_content
+                        )
+                    else:
+                        text_content = str(raw_content) if raw_content is not None else ""
                     if msg.get("role") == "system":
-                        system_prompt = msg.get("content", "")
+                        system_prompt = text_content
                     elif msg.get("role") == "user":
-                        user_prompt = msg.get("content", "")
+                        user_prompt = text_content
 
                 response_text = ""
                 if hasattr(response, "choices") and response.choices:
@@ -363,13 +373,17 @@ class AgentLens:
                         "total_tokens": response.usage.total_tokens,
                     }
 
+                provider = _detect_provider(actual_model)
+                if provider == "unknown":
+                    provider = "openai"
+
                 lens.trace_llm_call(
                     agent_name=agent_name,
-                    model=model,
+                    model=actual_model,
                     prompt=user_prompt,
                     system_prompt=system_prompt,
                     response=response_text,
-                    provider="openai",
+                    provider=provider,
                     temperature=kwargs.get("temperature"),
                     tokens=tokens,
                     duration_ms=duration_ms,
@@ -394,7 +408,7 @@ class AgentLens:
             from anthropic import Anthropic
             client = lens.wrap_anthropic(Anthropic(), agent_name="ClaudeAgent")
             response = client.messages.create(
-                model="claude-sonnet-4-6",  # Updated June 2026: model deprecated
+                model="claude-sonnet-5-5",
                 max_tokens=1024,
                 messages=[{"role": "user", "content": "Hello Claude"}]
             )
@@ -488,15 +502,16 @@ class AgentLens:
         # Extract token usage
         tokens = None
         if hasattr(response, "usage") and response.usage:
-            input_tokens = getattr(response.usage, "input_tokens", 0)
-            output_tokens = getattr(response.usage, "output_tokens", 0)
-            # Include cache tokens if present (Claude extended thinking)
+            input_tokens = getattr(response.usage, "input_tokens", 0) or 0
+            output_tokens = getattr(response.usage, "output_tokens", 0) or 0
+            # Include cache tokens if present (Anthropic prompt caching / extended thinking)
             cache_read = getattr(response.usage, "cache_read_input_tokens", 0) or 0
             cache_creation = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+            prompt_tokens = input_tokens + cache_read + cache_creation
             tokens = {
-                "prompt_tokens": input_tokens,
+                "prompt_tokens": prompt_tokens,
                 "completion_tokens": output_tokens,
-                "total_tokens": input_tokens + output_tokens,
+                "total_tokens": prompt_tokens + output_tokens,
             }
 
         # Detect tool use in response
@@ -539,7 +554,7 @@ class AgentLens:
         Usage:
             import google.generativeai as genai
             genai.configure(api_key="...")
-            model = genai.GenerativeModel("gemini-3.5-flash")  # Updated June 2026
+            model = genai.GenerativeModel("gemini-3.8-flash")
             model = lens.wrap_google(model, agent_name="GeminiAgent")
             response = model.generate_content("Explain quantum computing")
             # ^ Automatically traced!
@@ -678,8 +693,8 @@ class AgentLens:
             litellm.callbacks = [callback]
 
             # Now every litellm.completion() call is traced regardless of provider
-            response = litellm.completion(model="gpt-5.4",  # Updated June 2026: gpt-4o deprecated messages=[...])
-            response = litellm.completion(model="claude-sonnet-4-6",  # Updated June 2026 messages=[...])
+            response = litellm.completion(model="gpt-6-astra", messages=[...])
+            response = litellm.completion(model="claude-sonnet-5-5", messages=[...])
             response = litellm.completion(model="ollama/llama3", messages=[...])
         """
         return LiteLLMCallback(self, agent_name)
@@ -736,10 +751,20 @@ class OllamaTraced:
             user_prompt = ""
             system_prompt = ""
             for msg in messages:
+                if not isinstance(msg, dict):
+                    continue
+                raw_content = msg.get("content", "")
+                if isinstance(raw_content, list):
+                    text_content = " ".join(
+                        b.get("text", "") if isinstance(b, dict) else str(b)
+                        for b in raw_content
+                    )
+                else:
+                    text_content = str(raw_content) if raw_content is not None else ""
                 if msg.get("role") == "user":
-                    user_prompt = msg.get("content", "")
+                    user_prompt = text_content
                 elif msg.get("role") == "system":
-                    system_prompt = msg.get("content", "")
+                    system_prompt = text_content
 
             tokens = None
             if "prompt_eval_count" in data or "eval_count" in data:
@@ -896,18 +921,31 @@ def _detect_provider(model: str) -> str:
     """Detect the LLM provider from a model name string."""
     model_lower = model.lower()
     if "/" in model_lower:
-        # Provider prefix format like "ollama/llama3", "anthropic/claude-3", "openai/gpt-5"
+        # Provider prefix format like "ollama/llama3", "anthropic/claude-sonnet-5-5", "openai/gpt-6-astra"
         return model_lower.split("/")[0]
-    if "gpt" in model_lower or "o1" in model_lower or "o3" in model_lower:
+    if (
+        "gpt" in model_lower
+        or "astra" in model_lower
+        or "sol-6" in model_lower
+        or "o1" in model_lower
+        or "o3" in model_lower
+    ):
         return "openai"
-    if "claude" in model_lower:
+    if (
+        "claude" in model_lower
+        or "opus-5" in model_lower
+        or "sonnet-5" in model_lower
+        or "haiku-5" in model_lower
+    ):
         return "anthropic"
-    if "gemini" in model_lower:
+    if "gemini" in model_lower or "argon" in model_lower:
         return "google"
     if "deepseek" in model_lower:
         return "deepseek"
     if "grok" in model_lower:
         return "xai"
+    if "muse-spark" in model_lower:
+        return "meta"
     if "llama" in model_lower or "mistral" in model_lower or "qwen" in model_lower:
         return "ollama"
     return "unknown"

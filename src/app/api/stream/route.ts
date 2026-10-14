@@ -6,8 +6,21 @@ import { traceStore } from '@/lib/trace-store';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   const encoder = new TextEncoder();
+  let unsubscribe: (() => void) | null = null;
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+
+  const cleanup = () => {
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = null;
+    }
+    if (unsubscribe) {
+      unsubscribe();
+      unsubscribe = null;
+    }
+  };
 
   const stream = new ReadableStream({
     start(controller) {
@@ -15,31 +28,32 @@ export async function GET() {
       controller.enqueue(encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: 'connected', timestamp: new Date().toISOString() })}\n\n`));
 
       // Subscribe to trace store events
-      const unsubscribe = traceStore.subscribe((event: string, data: unknown) => {
+      unsubscribe = traceStore.subscribe((event: string, data: unknown) => {
         try {
           controller.enqueue(
             encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
           );
         } catch {
-          // Client disconnected
-          unsubscribe();
+          cleanup();
         }
       });
 
       // Send heartbeat every 30s to keep connection alive
-      const heartbeat = setInterval(() => {
+      heartbeat = setInterval(() => {
         try {
           controller.enqueue(
             encoder.encode(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`)
           );
         } catch {
-          clearInterval(heartbeat);
-          unsubscribe();
+          cleanup();
         }
       }, 30000);
 
       // Cleanup when client disconnects
-      // Note: In production, use AbortSignal for proper cleanup
+      request.signal.addEventListener('abort', cleanup);
+    },
+    cancel() {
+      cleanup();
     },
   });
 

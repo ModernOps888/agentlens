@@ -30,13 +30,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Create non-root user for security
-RUN addgroup --system agentlens && adduser --system --ingroup agentlens agentlens
+# Create non-root user and writable persistence directory
+RUN addgroup --system agentlens && adduser --system --ingroup agentlens agentlens \
+    && mkdir -p /app/.data && chown -R agentlens:agentlens /app/.data
 
 # Copy built application
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
 
 # Copy SDK files so they're accessible from the container
 COPY --from=builder /app/sdk ./sdk
