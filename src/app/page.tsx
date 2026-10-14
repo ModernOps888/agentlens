@@ -1308,7 +1308,7 @@ export default function AgentLensApp() {
   const exportTraceJSON = useCallback(() => {
     if (!activeSession) return;
     const data = {
-      version: '1.0.0',
+      version: '1.3.0',
       exported_at: new Date().toISOString(),
       tool: 'AgentLens',
       session: {
@@ -1336,13 +1336,13 @@ export default function AgentLensApp() {
         resource: {
           attributes: [
             { key: 'service.name', value: { stringValue: 'agentlens' } },
-            { key: 'service.version', value: { stringValue: '1.0.0' } },
+            { key: 'service.version', value: { stringValue: '1.3.0' } },
             { key: 'agentlens.session.id', value: { stringValue: activeSession.id } },
             { key: 'agentlens.session.name', value: { stringValue: activeSession.name } },
           ],
         },
         scopeSpans: [{
-          scope: { name: 'agentlens.tracer', version: '1.0.0' },
+          scope: { name: 'agentlens.tracer', version: '1.3.0' },
           spans: activeSession.steps.map((step, i) => ({
             traceId: activeSession.id.replace(/-/g, '').padEnd(32, '0'),
             spanId: step.id.replace(/-/g, '').substring(0, 16),

@@ -2,7 +2,7 @@
   "name": "agentlens-vscode",
   "displayName": "AgentLens — AI Agent Debugger",
   "description": "Visual time-travel debugger for AI agent workflows. Inspect LLM calls, trace costs, and detect anomalies directly in VS Code.",
-  "version": "0.1.0",
+  "version": "1.3.0",
   "publisher": "ModernOps888",
   "repository": {
     "type": "git",

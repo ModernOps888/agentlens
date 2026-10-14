@@ -1,6 +1,6 @@
 {
   "name": "agentlens-sdk",
-  "version": "0.1.0",
+  "version": "1.3.0",
   "description": "AgentLens SDK — Trace your AI agents with one line of code. Chrome DevTools for AI Agents.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
